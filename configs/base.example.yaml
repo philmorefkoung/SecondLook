@@ -1,8 +1,18 @@
+# Copy this file to configs/base.yaml and fill in the local paths for your machine.
+# configs/base.yaml is gitignored.
+
 paths:
-  data_root: C:/Users/User/Documents/UCSF_BMSR/UCSF_BrainMetastases_TRAIN
-  subject_info: C:/Users/User/Documents/UCSF_BMSR/TableS1_UCSF_BrainMetastases_SubjectInfo.xlsx
+  # Root directory of the extracted UCSF-BMSR TRAIN release
+  data_root: /path/to/UCSF_BMSR/UCSF_BrainMetastases_TRAIN
+
+  # Subject info Excel (shipped with the BMSR release)
+  subject_info: /path/to/UCSF_BMSR/TableS1_UCSF_BrainMetastases_SubjectInfo.xlsx
+
+  # Generated locally by scripts/inventory.py; gitignored
   splits_csv: brain_mets_agent/data/splits.csv
   inventory_json: brain_mets_agent/data/inventory.json
+
+  # Where trained adapters / detector checkpoints are stored
   ckpt_dir: ckpts/
 
 dataset:

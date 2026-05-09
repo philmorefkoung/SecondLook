@@ -250,9 +250,11 @@ def main():
                          "detector probability.")
     ap.add_argument("--prob-source",
                     choices=["vlm_else_detector", "detector_only", "vlm_only", "average"],
-                    default="detector_only",
-                    help="Score formula's probability term. detector_only is the "
-                         "current sweep best (vlm_conf appears uncalibrated).")
+                    default="vlm_else_detector",
+                    help="Score formula's probability term. vlm_else_detector is the "
+                         "sweep best with the DPO-v4 verifier (its calibrated vlm_conf "
+                         "becomes the primary ranking signal). For the base or SFT-only "
+                         "verifiers, detector_only wins instead.")
     ap.add_argument("--weights-preset",
                     choices=["verdict_heavy", "balanced", "prob_heavy", "very_prob_heavy"],
                     default="verdict_heavy",

@@ -22,7 +22,9 @@ This repository contains the code, configs, and reproduction scripts for the pro
 | recall @ FP=5 | 0.426 | **0.460** | +3.4 |
 | MRR | 0.477 | **0.541** | +6.4 |
 
-All inference is local on a single consumer GPU (RTX 5090), at \$0 per study. Total project spend: ~\$75 (one-time hosted-VLM data labeling for the SFT corpus).
+All inference is local on a single consumer GPU (RTX 5090), at \$0 per study using the rule-based orchestrator (`--agent rule --vlm local-qwen`). Total project spend: ~\$75 (one-time hosted-VLM data labeling for the SFT corpus).
+
+> **Leakage caveat (UCSF only):** the published BMSR nnU-Net was trained on the full 461-study UCSF-BMSR cohort, including this project's held-out 47-study test split. UCSF baseline numbers therefore reflect partial test-set memorization, and the UCSF agent results should be read as *agent over leakage-inflated detector*. Stanford BrainMetShare is the leakage-clean external validation cohort.
 
 > **This is research code from a course project.** Not clinical software, not approved for diagnostic use. The published BMSR nnU-Net was trained on the full UCSF-BMSR dataset including our 47-study test split, so absolute UCSF baselines reflect partial test-set memorization; the leakage-clean Stanford numbers are the load-bearing generalization claim. See `brainmetsagentreportnew.tex` §X for full caveats.
 
@@ -93,52 +95,57 @@ python scripts/run_nnunet_inference.py \
 
 Outputs binary segmentations + cached probmaps the agent reads via `NNUNetProbmapCache`.
 
-### 2. SFT corpus + adapter (DPO v4 verifier, ~46 min training)
+### 2. SFT corpus + adapter (~46 min training)
 
 ```bash
-# Generate evidence-card / verdict pairs across 240 train studies
+# Generate evidence-card / verdict pairs across 240 train studies (uses Anthropic Sonnet as teacher)
 ANTHROPIC_API_KEY=... \
 python scripts/generate_sft_data.py --split train --offset 0 --limit 240
 
 # Run the corrector LLM on disagreement examples
 python scripts/finalize_sft_targets.py
 
-# Merge into the v2 corpus (2,901 train / 64 val)
+# Merge into the v2 corpus (2,901 train / 64 val JSONL files)
 python scripts/merge_sft.py --out data/sft_combined_v2
 
 # Train the LoRA SFT adapter (rank 16, alpha 32, 2 epochs)
 python scripts/sft_qwen_vl.py \
-    --data data/sft_combined_v2 \
-    --out ckpts/sft_qwen_vl_v2
+    --train data/sft_combined_v2/train.jsonl \
+    --val   data/sft_combined_v2/val.jsonl \
+    --out   ckpts/sft_qwen_vl_v2
 ```
 
 ### 3. DPO pairs + adapter (DPO v4 — the recipe that worked)
 
 ```bash
 # Mine SFT-v2 mistakes from the train cohort
-python scripts/mine_sft_v2_mistakes.py --adapter ckpts/sft_qwen_vl_v2
+python scripts/mine_sft_v2_mistakes.py --adapter ckpts/sft_qwen_vl_v2/adapter_final
 
 # Filter for high-quality pairs (confidence >= 0.7, decisive GT, decisive detector)
 python scripts/filter_dpo_pairs.py
 
-# Balance to 103 confirm + 103 reject directional pairs
+# Balance to 103 confirm + 103 reject directional pairs (writes train.jsonl + val.jsonl)
 python scripts/balance_dpo_pairs.py --out data/dpo_pairs_v4
 
 # Train the LoRA DPO adapter (beta=0.05, 1 epoch)
 python scripts/dpo_qwen_vl.py \
-    --pairs data/dpo_pairs_v4 \
-    --base-adapter ckpts/sft_qwen_vl_v2/adapter_final \
+    --train         data/dpo_pairs_v4/train.jsonl \
+    --val           data/dpo_pairs_v4/val.jsonl \
+    --base-adapter  ckpts/sft_qwen_vl_v2/adapter_final \
     --beta 0.05 --epochs 1 \
-    --out ckpts/dpo_qwen_vl_v4
+    --out           ckpts/dpo_qwen_vl_v4
 ```
 
 ### 4. Evaluate the agent
 
 ```bash
-# UCSF test (n=47 multi-lesion)
+# UCSF test (n=47 multi-lesion); rule-based orchestrator + local Qwen verifier => fully local, $0 / study
 python scripts/evaluate.py \
-    --split test \
+    --root    <UCSF-BMSR root> \
+    --splits  brain_mets_agent/data/splits.csv \
+    --split   test \
     --predictor nnunet --nnunet-probmap-dir runs/nnunet_probmap_ucsf \
+    --agent rule \
     --vlm local-qwen --vlm-adapter ckpts/dpo_qwen_vl_v4/adapter_final \
     --weights-preset verdict_heavy --prob-source vlm_else_detector \
     --save-state-dir runs/state_test_nnunet_dpo_v4 \
@@ -146,8 +153,11 @@ python scripts/evaluate.py \
 
 # Stanford external validation (n=87)
 python scripts/evaluate.py \
-    --split stanford \
+    --root    <Stanford BrainMetShare root> \
+    --splits  brain_mets_agent/data/splits_stanford.csv \
+    --split   stanford \
     --predictor nnunet --nnunet-probmap-dir runs/nnunet_probmap_stanford \
+    --agent rule \
     --vlm local-qwen --vlm-adapter ckpts/dpo_qwen_vl_v4/adapter_final \
     --weights-preset verdict_heavy --prob-source vlm_else_detector \
     --save-state-dir runs/state_stanford_dpo_v4 \
@@ -155,6 +165,8 @@ python scripts/evaluate.py \
 ```
 
 `--save-state-dir` pickles per-study (candidates, verdicts, evidence cards) so the offline ranker sweep does not need to re-invoke the VLM.
+
+> **Note on `--agent` default.** `evaluate.py` defaults to `--agent llm`, which uses Anthropic Sonnet as a tool-calling planner and incurs API cost. The "fully local / $0 per study" headline numbers in the table above use `--agent rule` explicitly, as shown.
 
 ### 5. Sweep the ranker (offline, ~seconds, \$0)
 

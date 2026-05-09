@@ -42,6 +42,9 @@ Advanced_Computation_Report*.pdf
 # figures are regenerated from scripts/make_*_figures.py; not committed
 figures/
 
+# real config (has machine-specific paths); commit configs/base.example.yaml instead
+configs/base.yaml
+
 # editor
 .DS_Store
 *.log
