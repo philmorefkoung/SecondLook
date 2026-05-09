@@ -6,7 +6,7 @@ SecondLook-MRI is a second-pass agent that pairs a published 4-channel nnU-Net d
 
 ![SecondLook-MRI architecture](framework.png)
 
-This repository contains the code, configs, and reproduction scripts for the project. The companion paper is `brainmetsagentreportnew.tex` (with `custom.bib`).
+This repository contains the code, configs, and reproduction scripts for the project.
 
 ## Headline results
 
@@ -22,12 +22,11 @@ This repository contains the code, configs, and reproduction scripts for the pro
 | recall @ FP=5 | 0.426 | **0.460** | +3.4 |
 | MRR | 0.477 | **0.541** | +6.4 |
 
-All inference is local on a single consumer GPU (RTX 5090), at \$0 per study using the rule-based orchestrator (`--agent rule --vlm local-qwen`). Total project spend: ~\$75 (one-time hosted-VLM data labeling for the SFT corpus).
+All inference is local on a single consumer GPU (RTX 5090), at \$0 per study using the rule-based orchestrator (`--agent rule --vlm local-qwen`). Total project spend: ~\$30 (one-time hosted-VLM data labeling for the SFT corpus).
 
 > **Leakage caveat (UCSF only):** the published BMSR nnU-Net was trained on the full 461-study UCSF-BMSR cohort, including this project's held-out 47-study test split. UCSF baseline numbers therefore reflect partial test-set memorization, and the UCSF agent results should be read as *agent over leakage-inflated detector*. Stanford BrainMetShare is the leakage-clean external validation cohort.
 
-> **This is research code from a course project.** Not clinical software, not approved for diagnostic use. The published BMSR nnU-Net was trained on the full UCSF-BMSR dataset including our 47-study test split, so absolute UCSF baselines reflect partial test-set memorization; the leakage-clean Stanford numbers are the load-bearing generalization claim. See `brainmetsagentreportnew.tex` §X for full caveats.
-
+> **This is research code from a course project.** Not clinical software, not approved for diagnostic use. The published BMSR nnU-Net was trained on the full UCSF-BMSR dataset including our 47-study test split, so absolute UCSF baselines reflect partial test-set memorization; the leakage-clean Stanford numbers are the load-bearing generalization claim. 
 ## Project structure
 
 ```
@@ -40,8 +39,6 @@ brain_mets_agent/         # core Python package
 configs/                  YAML configs (paths + hyperparameters)
 scripts/                  runnable training, evaluation, and figure-generation scripts
 tests/                    smoke tests (mock backends, no GPU required)
-brainmetsagentreportnew.tex   the paper
-custom.bib                    references
 FRAMEWORK.md              architecture deep-dive (training data construction, SFT/DPO recipe, ranker, ablations)
 PROGRESS.md               chronological project log of every experiment, including negative results
 ```
@@ -50,7 +47,7 @@ PROGRESS.md               chronological project log of every experiment, includi
 
 ```bash
 # clone + install in editable mode
-git clone <repo-url> secondlook-mri
+git clone https://github.com/philmorefkoung/SecondLook/ secondlook-mri
 cd secondlook-mri
 pip install -r requirements.txt
 pip install -e .
@@ -207,29 +204,6 @@ We tested two recall-ceiling-lifting mechanisms and both failed informatively. T
 - **Detector ensemble with AURORA**: lifted recall@10 by +1–5 pp but regressed MRR by 6–8 pp; the AURORA-only candidates are mostly edema halos whose centroids miss the GT match.
 
 Together these show that small-lesion misses on this task are *detector-agnostic* and structurally upstream of any practical agent-side intervention.
-
-## Citation
-
-If you use this code, please cite the companion paper:
-
-```bibtex
-@misc{secondlook-mri,
-  title  = {SecondLook-MRI: A Calibrated Vision--Language Agent for Auditable
-            Discovery of Additional Brain Metastases},
-  author = {<author list>},
-  year   = {2026},
-  note   = {Course project, Advanced Computation}
-}
-```
-
-And cite the upstream datasets and base models you used:
-
-- UCSF-BMSR: Rudie et al., *Radiology: AI* 2024
-- Stanford BrainMetShare: Grøvik et al., *J. Magn. Reson. Imaging* 2020
-- nnU-Net: Isensee et al., *Nature Methods* 2021
-- Qwen2.5-VL: Bai et al., 2024
-- LoRA: Hu et al., ICLR 2022
-- DPO: Rafailov et al., NeurIPS 2023
 
 ## License
 
