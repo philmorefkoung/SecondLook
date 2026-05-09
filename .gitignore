@@ -1,0 +1,47 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+.env
+.ipynb_checkpoints/
+
+ckpts/
+runs/
+wandb/
+*.h5
+*.npy
+*.npz
+*.pt
+*.pth
+
+# data layout artefacts (may contain patient identifiers)
+brain_mets_agent/data/inventory.json
+brain_mets_agent/data/splits.csv
+data/
+
+# build artefacts
+*.egg-info/
+
+# LaTeX build artefacts
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
+*.toc
+
+# compiled report bundles (regenerable from .tex + .bib)
+Advanced_Computation_Report*.zip
+Advanced_Computation_Report*.pdf
+
+# editor
+.DS_Store
+*.log
+*.swp
+.vscode/
+.idea/

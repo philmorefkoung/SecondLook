@@ -1,0 +1,203 @@
+% Paper-ready flowchart for the brain-metastasis discrepancy-hunter agent.
+%
+% Compile with:   pdflatex framework_flowchart.tex
+% (or upload to Overleaf as a standalone document — no extra .sty files needed).
+%
+% Output is a tightly-cropped PDF with sans-serif Helvetica labels.
+% Resize for a paper by changing the global `font=\small` and the node
+% `text width=` values in the styles below.
+
+\documentclass[border=8pt]{standalone}
+
+\usepackage{tikz}
+\usepackage{helvet}
+\usepackage[T1]{fontenc}
+\renewcommand{\familydefault}{\sfdefault}
+
+\usetikzlibrary{positioning, shapes.geometric, arrows.meta, fit, backgrounds, calc}
+
+% ---- palette (muted, paper-friendly) -----------------------------------
+\definecolor{Cinput}   {HTML}{2E4B6B}
+\definecolor{Cdetect}  {HTML}{8E4B2E}
+\definecolor{Cagent}   {HTML}{3F6B43}
+\definecolor{Coutput}  {HTML}{6B3F6B}
+\definecolor{Cside}    {HTML}{555555}
+
+\begin{document}
+\begin{tikzpicture}[
+    font=\small,
+    node distance = 7mm and 12mm,
+    >=Stealth,
+    every node/.style = {align=center},
+    %
+    io/.style = {
+      draw=Cinput, line width=0.7pt, fill=Cinput!8, rounded corners=2pt,
+      minimum height=11mm, text width=42mm, inner sep=4pt,
+    },
+    det/.style = {
+      draw=Cdetect, line width=0.7pt, fill=Cdetect!8, rounded corners=2pt,
+      minimum height=11mm, text width=52mm, inner sep=4pt,
+    },
+    ag/.style = {
+      draw=Cagent, line width=0.7pt, fill=Cagent!8, rounded corners=2pt,
+      minimum height=11mm, text width=58mm, inner sep=4pt,
+    },
+    agdim/.style = {
+      draw=black!30, line width=0.5pt, fill=black!4, rounded corners=2pt,
+      minimum height=10mm, text width=58mm, inner sep=4pt,
+      text=black!55,
+    },
+    out/.style = {
+      draw=Coutput, line width=0.7pt, fill=Coutput!8, rounded corners=2pt,
+      minimum height=11mm, text width=52mm, inner sep=4pt,
+    },
+    sidebox/.style = {
+      draw=Cside, line width=0.6pt, fill=Cside!5, rounded corners=2pt,
+      text width=46mm, inner sep=5pt, font=\footnotesize, align=left,
+    },
+    arr/.style    = {->, line width=0.6pt, draw=black!75},
+    arrdash/.style= {->, dashed, line width=0.5pt, draw=black!50},
+    %
+    lane/.style = {
+      font=\bfseries\footnotesize\sffamily, rotate=90, anchor=south,
+      inner sep=2pt,
+    },
+]
+
+% ============================================================
+% INPUT
+% ============================================================
+\node[io] (mri) {%
+  \textbf{4-channel MRI study}\\[1pt]
+  \footnotesize T1pre\,$\cdot$\,T1post\,$\cdot$\,FLAIR\,$\cdot$\,Subtraction%
+};
+\node[io, right=14mm of mri] (seed) {%
+  \textbf{Seed lesion mask}\\[1pt]
+  \footnotesize first finding (binary)%
+};
+
+% ============================================================
+% DETECTOR
+% ============================================================
+\node[det, below=14mm of mri.south, anchor=north,
+      xshift=12mm] (nnu) {%
+  \textbf{nnU-Net Task115\_Metastases\_All}\\
+  \footnotesize Rudie et al.\ 2024 \,$\cdot$\, frozen \,$\cdot$\, 4-channel%
+};
+\node[det, below=of nnu] (cc) {%
+  \textbf{Connected components $\to$ candidate pool}\\
+  \footnotesize size-ranked probmap\;
+  $p_i \!=\! 0.3 + 0.7\,s_i / s_{\max}$,\,
+  $\geq\!3$ vox%
+};
+
+% ============================================================
+% AGENT  (rule-based 7-step orchestrator)
+% ============================================================
+\node[ag, below=14mm of cc.south, anchor=north] (s1) {%
+  \textbf{Step 1.\ characterize\_seed}\\
+  \footnotesize $\to$ \textsc{SeedPhenotype}: vol, $\Delta$enh, eccentricity,
+  modality\,$z$%
+};
+\node[ag, below=of s1] (s2) {%
+  \textbf{Step 2.\ per-candidate verify} \;\textit{(loop, budget 32)}\\
+  \footnotesize \textsc{EvidenceCard} (4 mod $\times$ 3 axes + seed strip)\\
+  \footnotesize $\to$ Qwen2.5-VL $\to$ \textsc{VerifierVerdict}\\
+  \footnotesize $\{$decision,\,vlm\_conf,\,seed\_sim,\,mimic\_risk$\}$%
+};
+\node[ag, below=of s2] (s3) {%
+  \textbf{Step 3.\ residual\_update}\\
+  \footnotesize subtract confirmed lesions from probmap%
+};
+\node[agdim, below=of s3] (s45) {%
+  \textit{Step 4 (lower-threshold pass) and
+   Step 5 (residual top-K)}\\[1pt]
+  \scriptsize \textit{ablated to no-op in production --- see negative results
+  \S\,6}%
+};
+\node[ag, below=of s45] (s6) {%
+  \textbf{Step 6.\ phenotype\_compare}\\
+  \footnotesize per-candidate seed-similarity (intensity\,$z$)%
+};
+\node[ag, below=of s6] (s7) {%
+  \textbf{Step 7.\ rank\_candidates}\\
+  \footnotesize \texttt{verdict\_heavy} weights\,$\cdot$\,
+   prob\_source = \texttt{vlm\_else\_detector}%
+};
+
+% ============================================================
+% OUTPUT
+% ============================================================
+\node[out, below=14mm of s7] (output) {%
+  \textbf{Top-$K$ ranked additional lesions}\\
+  \footnotesize + structured audit log of every step \& verdict%
+};
+
+% ============================================================
+% VLM SIDECAR (training stack details)
+% ============================================================
+\node[sidebox, right=14mm of s2] (vlm) {%
+  \textbf{Local VLM stack}\\[2pt]
+  $\bullet$ Qwen2.5-VL-7B-Instruct \;\scriptsize(frozen)\\
+  $\bullet$ {\small +} LoRA SFT v2 \;\scriptsize(2{,}901 ex, 2 ep)\\
+  $\bullet$ {\small +} LoRA DPO v4 \;\scriptsize(103/103 pairs, $\beta\!=\!0.05$, 1 ep)\\[2pt]
+  \scriptsize \textit{$r\!=\!16$, $\alpha\!=\!32$ on q/k/v/o\_proj of language tower;
+   vision encoder frozen.}%
+};
+
+% ============================================================
+% ARROWS
+% ============================================================
+% input -> detector
+\draw[arr] (mri) -- (nnu);
+
+% seed feeds the agent directly (skips detector); residual\_update also
+% references the seed mask but that is a downstream consequence of
+% confirming the seed at Step 1.
+\draw[arr] (seed.south) |- (s1.east);
+
+% detector chain
+\draw[arr] (nnu) -- (cc);
+
+% detector -> agent
+\draw[arr] (cc) -- (s1);
+
+% agent chain
+\draw[arr] (s1) -- (s2);
+\draw[arr] (s2) -- (s3);
+\draw[arr] (s3) -- (s45);
+\draw[arr] (s45) -- (s6);
+\draw[arr] (s6) -- (s7);
+
+% agent -> output
+\draw[arr] (s7) -- (output);
+
+% sidecar dashed link to step 2
+\draw[arrdash] (vlm.west) -- (s2.east);
+
+% ============================================================
+% LANE LABELS (vertical coloured bars on the left)
+% ============================================================
+\begin{pgfonlayer}{background}
+  % INPUT lane
+  \node[fit=(mri)(seed), draw=none, fill=Cinput!4, rounded corners=2pt,
+        inner xsep=2mm, inner ysep=3mm] (laneIn) {};
+  % DETECTOR lane
+  \node[fit=(nnu)(cc), draw=none, fill=Cdetect!4, rounded corners=2pt,
+        inner xsep=2mm, inner ysep=3mm] (laneDet) {};
+  % AGENT lane
+  \node[fit=(s1)(s2)(s3)(s45)(s6)(s7)(vlm), draw=none, fill=Cagent!4,
+        rounded corners=2pt, inner xsep=2mm, inner ysep=3mm] (laneAg) {};
+  % OUTPUT lane
+  \node[fit=(output), draw=none, fill=Coutput!4, rounded corners=2pt,
+        inner xsep=2mm, inner ysep=3mm] (laneOut) {};
+\end{pgfonlayer}
+
+% lane labels (rotated, on the far left)
+\node[lane, text=Cinput,  anchor=center] at ($(laneIn.west)+(-3mm,0)$)  {INPUT};
+\node[lane, text=Cdetect, anchor=center] at ($(laneDet.west)+(-3mm,0)$) {DETECTOR};
+\node[lane, text=Cagent,  anchor=center] at ($(laneAg.west)+(-3mm,0)$)  {AGENT \,(rule-based 7-step)};
+\node[lane, text=Coutput, anchor=center] at ($(laneOut.west)+(-3mm,0)$) {OUTPUT};
+
+\end{tikzpicture}
+\end{document}

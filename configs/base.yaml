@@ -1,0 +1,43 @@
+paths:
+  data_root: C:/Users/User/Documents/UCSF_BMSR/UCSF_BrainMetastases_TRAIN
+  subject_info: C:/Users/User/Documents/UCSF_BMSR/TableS1_UCSF_BrainMetastases_SubjectInfo.xlsx
+  splits_csv: brain_mets_agent/data/splits.csv
+  inventory_json: brain_mets_agent/data/inventory.json
+  ckpt_dir: ckpts/
+
+dataset:
+  modalities: [T1pre, T1post, FLAIR, subtraction]
+  spacing_mm: [1.0, 1.0, 1.0]
+  intensity_norm: zscore_per_modality
+  min_lesion_voxels: 10
+
+splits:
+  train_frac: 0.7
+  val_frac: 0.15
+  test_frac: 0.15
+  group_by: patient_id
+  seed: 42
+
+agent:
+  budget_actions: 32
+  fp_per_study_target: 5
+  vlm_confidence_threshold: 0.6
+  seed_strategy: largest      # largest | random | provided
+  duplicate_dist_vox: 5.0
+  duplicate_iou: 0.3
+  second_pass_k: 16
+
+proposal:
+  arch: swin_unetr
+  in_channels: 4
+  out_channels: 2
+  feature_size: 48
+  patch_size: [96, 96, 96]
+  overlap: 0.5
+  threshold: 0.5
+
+llm:
+  provider: anthropic
+  model: claude-sonnet-4-6
+  max_tokens: 1024
+  enable_caching: true
