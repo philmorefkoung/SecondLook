@@ -4,6 +4,8 @@
 
 SecondLook-MRI is a second-pass agent that pairs a published 4-channel nnU-Net detector with a 7B vision–language verifier (Qwen2.5-VL-7B) fine-tuned via LoRA SFT and calibrated via LoRA DPO. Given a multimodal brain MRI study and one *seed* lesion (the radiologist's first finding), the agent runs a deterministic seven-step radiology-search protocol and returns a ranked list of additional candidate metastases, each accompanied by a structured per-candidate evidence card (supporting features, contradicting features, mimic risk, written rationale).
 
+![SecondLook-MRI architecture](framework.png)
+
 This repository contains the code, configs, and reproduction scripts for the project. The companion paper is `brainmetsagentreportnew.tex` (with `custom.bib`).
 
 ## Headline results
