@@ -36,7 +36,6 @@ brain_mets_agent/         # core Python package
 configs/                  YAML configs (paths + hyperparameters)
 scripts/                  runnable training, evaluation, and figure-generation scripts
 tests/                    smoke tests (mock backends, no GPU required)
-figures/                  paper figures and the TikZ flowchart source
 brainmetsagentreportnew.tex   the paper
 custom.bib                    references
 FRAMEWORK.md              architecture deep-dive (training data construction, SFT/DPO recipe, ranker, ablations)
@@ -167,13 +166,16 @@ This sweeps ~216 (preset × prob_source × knobs) configurations on the cached s
 
 ### 6. Generate paper figures
 
+Figures are not committed to the repo (they contain rendered MRI slices and are large). Regenerate them locally into a `figures/` directory before compiling the paper:
+
 ```bash
+mkdir -p figures
 python scripts/make_pipeline_figures.py     # fig_01 … fig_08 (per-stage examples)
 python scripts/make_results_figures.py      # fig_R1 … fig_R5 (FROC, per-lesion, etc.)
 python scripts/make_experiment_figures.py   # fig_E0 … fig_E2 (audit log, miss diagnostic, negative results)
 ```
 
-All scripts read from cached eval JSONs and state pickles in `runs/`; no re-evaluation required.
+All three scripts read from cached eval JSONs and state pickles in `runs/`; no re-evaluation required. The TikZ source for the architecture flowchart (Figure 1 of the paper) is in this repo; compile it with `pdflatex figures/framework_flowchart.tex` once the directory exists.
 
 ## Pre-trained checkpoints
 

@@ -39,6 +39,9 @@ data/
 Advanced_Computation_Report*.zip
 Advanced_Computation_Report*.pdf
 
+# figures are regenerated from scripts/make_*_figures.py; not committed
+figures/
+
 # editor
 .DS_Store
 *.log
